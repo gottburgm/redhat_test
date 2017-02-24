@@ -2,9 +2,10 @@
  
 import java.util.*;
 import java.util.regex.*;
+import java.net.*;
+import java.io.*;
 
 public class RegexTestPatternMatcher {
-    public static final String TEST_DATA = "Listen 80\nListen 8000\n\nListen 192.0.2.1:80\n\nListen 192.0.2.5:8000\nIPv6 addresses must be enclosed in square brackets, as in the following example:\nListen [2001:db8::a00:20ff:fea7:ccea]:80\nblabla\nfoo\nbar\nListen *:80\nListen 0.0.0.0:8443 https\n\n";
     
     public static boolean isInteger(String s) {
         try { 
@@ -17,13 +18,36 @@ public class RegexTestPatternMatcher {
         // only got here if we didn't return false
         return true;
     }
-    
+    private static String readFile(String pathname) throws IOException {
+
+    File file = new File(pathname);
+    StringBuilder fileContents = new StringBuilder((int)file.length());
+    Scanner scanner = new Scanner(file);
+    String lineSeparator = System.getProperty("line.separator");
+
+    try {
+        while(scanner.hasNextLine()) {
+            fileContents.append(scanner.nextLine() + lineSeparator);
+        }
+        return fileContents.toString();
+    } finally {
+        scanner.close();
+    }
+}
     public static void main(String[] args) {
                 Hashtable<Integer, String> listeners = new Hashtable<Integer, String>();
-                Pattern listen_directives_pattern = Pattern.compile("(?!Listen) (((\\*|\\[.*:.*::.*:.*:.*:.*\\]|[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+):([0-9]+))|([0-9]+))\\W");
-                Pattern host_pattern = Pattern.compile("((\\*|\\[.*:.*::.*:.*:.*:.*\\]|[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+)(?!:))");
+                String TEST_DATA = "";
+                try {
+                    TEST_DATA = readFile("config.txt");
+                } catch(IOException e) {
+                    e.printStackTrace();
+                }
+                
+                Pattern listen_directives_pattern = Pattern.compile("(?!Listen\\s)(((\\*|\\[.*:.*::.*:.*:.*:.*\\]|[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+):([0-9]+))|([0-9]+))\\W");
+                Pattern host_pattern = Pattern.compile("(((\\*|\\[.*:.*::.*:.*:.*:.*\\]|[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+)):)");
                 Matcher directives_matcher = listen_directives_pattern.matcher(TEST_DATA);
                 String host = "";
+                String directive = "";
                 String port;
                 
                 while (directives_matcher.find())
@@ -31,15 +55,27 @@ public class RegexTestPatternMatcher {
                     Matcher hosts_matcher = host_pattern.matcher(directives_matcher.group());
                     while(hosts_matcher.find()) {
                         host = hosts_matcher.group();
+                        if(host == "*" || host == System.getenv("HOSTNAME") || host == "") {
+                            host = "0.0.0.0";
+                        }
                     }
                     
-                     String[] parts = directives_matcher.group().split(host + ":");
+                    directive = directives_matcher.group().substring(directives_matcher.group().lastIndexOf(':')+1);
+                    String[] parts = directive.split(":");
                     if(parts.length == 1) {
+                        if(host.length() > 0) {
+                            host = host.substring(0, host.length());
+                        } else {
+                            host = "0.0.0.0";
+                        }
                         port = parts[0];
-                    } else {
-                        host = parts[0];
+                    } else if (parts.length == 2) {
                         port = parts[1];
+                    } else {
+                        host = "0.0.0.0";
+                        port = directives_matcher.group();
                     }
+                    
                     if (isInteger(port)) {
                         listeners.put(Integer.parseInt(port), host);
                     } else {

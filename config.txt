@@ -1,0 +1,16 @@
+Listen 80
+Listen 8000
+
+
+Listen 192.0.2.1:80
+Listen 192.0.2.5:8000
+
+IPv6 addresses must be enclosed in square brackets, as in the following example:
+
+Listen [2001:db8::a00:20ff:fea7:ccea]:80
+
+Listen *:80
+
+
+Listen localhost:80
+Listen 0.0.0.0:8443 https

@@ -1,9 +1,11 @@
-// package iduno.apache.something.like.dat
- 
+
 import java.util.*;
 import java.util.regex.*;
+
 import java.net.*;
 import java.io.*;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 
 public class RegexTestPatternMatcher {
     
@@ -18,6 +20,7 @@ public class RegexTestPatternMatcher {
         // only got here if we didn't return false
         return true;
     }
+
     private static String readFile(String pathname) throws IOException {
 
     File file = new File(pathname);
@@ -34,12 +37,27 @@ public class RegexTestPatternMatcher {
         scanner.close();
     }
 }
+
+
     public static void main(String[] args) {
                 Hashtable<Integer, String> listeners = new Hashtable<Integer, String>();
                 String TEST_DATA = "";
+                InetAddress ip;
+                String hostname = "";
+                String port;
+
+                // Read Test File
                 try {
                     TEST_DATA = readFile("config.txt");
                 } catch(IOException e) {
+                    e.printStackTrace();
+                }
+                
+                // Get Host And IP
+                try {
+                    ip = InetAddress.getLocalHost();
+                    hostname = ip.getHostName();
+                } catch (UnknownHostException e) {
                     e.printStackTrace();
                 }
                 
@@ -48,14 +66,16 @@ public class RegexTestPatternMatcher {
                 Matcher directives_matcher = listen_directives_pattern.matcher(TEST_DATA);
                 String host = "";
                 String directive = "";
-                String port;
-                
+
+
                 while (directives_matcher.find())
                 {
                     Matcher hosts_matcher = host_pattern.matcher(directives_matcher.group());
                     while(hosts_matcher.find()) {
                         host = hosts_matcher.group();
-                        if(host == "*" || host == System.getenv("HOSTNAME") || host == "") {
+
+                        // use 0.0.0.0 for the possible variations of localhost
+                        if(host == "*" || host == hostname || host == "" || host == "localhost") {
                             host = "0.0.0.0";
                         }
                     }
